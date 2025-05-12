@@ -38,7 +38,8 @@ TODO=()
 TODO+=( "handle rooted .Trash-$UID directories" )
 TODO+=( "handle rooted metadata and directory sizes file (see: MyBook)" )
 TODO+=( "handle options" )
-
+TODO+=( "handle option 'list-date'/'D' with deletion date" )
+TODO+=( "handle option 'list-path'/'P' with file origin path" )
 version='0.1.1'
 
 # OTHER (and 'stolen' some ideas from):
@@ -242,6 +243,7 @@ get_next_unique_file_name()
   	printf '%s' "${_base_name}.$_next_numerator"
 }
 
+
 deletion_date()
 {
 	# creates like 2023-07-31T15:43:48
@@ -317,7 +319,8 @@ valid_options_long=(
 	'sort-by-file-size' \
 	'reverse' \
 	'recursive' \
-	'long-listing' \
+	'list-path' \
+	'list-date' \
 	'delete-interactive' \
 	'version' \
 	'usage' \
@@ -328,7 +331,9 @@ valid_options_long=(
 valid_options_short=(
 	'h' \
 	'd' \
+	'D' \
 	't' \
+	'P' \
 	's' \
 	'S' \
 	'r' \
@@ -360,7 +365,7 @@ trash_list()
 	local _ls_directory_option='--directory'
 	(
 		cd "${trash_dir}/files"
-		printf 'workdir: %s\n' "$PWD"
+		printf 'trash files dir: %s\n' "$PWD"
 		# no directory option without given names or globs
 		if [ $# -eq 0 ]; then
 			printf 'info:%s\n' 'no expression given'
@@ -368,7 +373,7 @@ trash_list()
 		fi
 # 		printf 'listing: %s\n' "$@"
 # 		ls "$_ls_directory_option" --human-readable -G -g --group-directories-first --classify -v --time-style=long-iso --format=single-column "$@" 2>/dev/null
-		eval /bin/ls $_ls_default_options $_ls_directory_option "$@" # 2>/dev/null
+		eval command ls $_ls_default_options $_ls_directory_option "$@" # 2>/dev/null
 	)
 }
 
@@ -568,6 +573,7 @@ run_command()
 	# NOTE: should 'delete' be the term for final delete (from(!)) trash)?
 	#     > likely yes!
  	local _command="$1"
+ 	shift
 
 	# see if we have an argument with those commands that require at least one
 	case $_command in
