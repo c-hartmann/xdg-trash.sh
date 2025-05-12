@@ -37,6 +37,7 @@
 TODO=()
 TODO+=( "handle rooted .Trash-$UID directories" )
 TODO+=( "handle rooted metadata and directory sizes file (see: MyBook)" )
+TODO+=( "handle options" )
 
 version='0.1.1'
 
@@ -118,6 +119,7 @@ trash_dir_mode=700
 usage()
 {
 cat << _USAGE
+
 xdg-trash - command line tool for deleting files to trash
 
 Synopsis
@@ -162,8 +164,8 @@ error_exit()
 			exit $_error_no
 			;;
 		* )
-			printf '%s\n' 'unkwon internal error' >&2
-			exit 99
+			printf '%s\n' 'unknown internal error' >&2
+			exit 999
 			;;
 	esac
 }
@@ -172,6 +174,23 @@ error_skip()
 {
 	local _file="$1"
 	printf '%s: %s\n' "skipped operation on:" "$_file"
+}
+
+error_usage()
+{
+	local _message="$1"
+	local _errnum="${2:-9}"
+	printf '%s: %s\n' "Usage error" "$_message"
+	usage
+	error_exit $_errnum
+}
+
+error_internal()
+{
+	local _message="$1"
+	local _errnum="$2:-99"
+	printf '%s: %s\n' "Internal error" "$_message"
+	error_exit $_errnum
 }
 
 # DRAFT
@@ -285,6 +304,7 @@ restricted_command_words=( \
 	'clean' \
 	'empty' \
 	'list' \
+	'help'
 )
 
 # NOTE: evaluate as an array ? (${_command_options[@]})
@@ -529,15 +549,15 @@ trash_get()
 test -d "${trash_dir}" || init_trash_storage
 
 # TODO: das hier ist gefährlicher unsinn
-get_command()
-{
-	local _default_command='default'
-	if [ $# -eq 0 ]; then
-		printf '%s' ${_default_command}
-	else
-		printf '%s' ${1}
-	fi
-}
+# get_command()
+# {
+# 	local _default_command='default'
+# 	if [ $# -eq 0 ]; then
+# 		printf '%s' ${_default_command}
+# 	else
+# 		printf '%s' ${1}
+# 	fi
+# }
 
 # map command to function
 # NOTE: the whole point in naming is:  does naming reflect operations on trash
@@ -547,25 +567,17 @@ run_command()
 	# NOTE: as for now we assume always a given command!
 	# NOTE: should 'delete' be the term for final delete (from(!)) trash)?
 	#     > likely yes!
- 	local _command
- 	local _command_default='put'
- 	printf '$1: %s\n' $1
-	case $1 in
-		'put' | 'delete' | 'trash' | 'get' | 'undelete' | 'recover' | 'restore' | 'erase' | 'remove' | 'rm' | 'purge' | 'shred' | 'clear' | 'clean' | 'empty' | 'list' )
-			printf 'using command: %s\n' $1
-			_command=$1
-			shift
-		;;
-		* )
-			if [ -e "$1" ]; then
-				printf 'using default command: %s\n' 'put'
-				_command="$_command_default"
-			else
-				error_usage
-			fi
+ 	local _command="$1"
+
+	# see if we have an argument with those commands that require at least one
+	case $_command in
+		put | trash | delete | get | undelete | recover | erase | remove | rm | shred | purge )
+			[[ -n "$1" ]] || error_usage "this command requires at least one argument: $_command"
 		;;
 	esac
- 	case $_command in
+
+	# handle command now savely
+	case $_command in
 		# NOTE: if 'undelete' is the way back from(!) trash, delete is 'put'
 		# TODO: see the spec! to get this sorted
 		#     > Trashing — a “delete” operation in which files are transferred into the Trash can
@@ -597,15 +609,43 @@ run_command()
 		clear | clean )
 			:
 		;;
+		help )
+			usage
+			exit 0
+		;;
 		* )
-			error_internal 9
+			error_internal "we have an unknown command: $1, that should have catched before"
 		;;
 	esac
 }
 
-exit=0 # valid?
-command=$(get_command $@)
-if [ "$command" != "default" ]; then
-	shift 1
-fi
-run_command $command $@
+# exit=0
+# command=$(get_command $@)
+# if [ "$command" != "default" ]; then
+# 	shift 1
+# fi
+
+command_default='put'
+# printf '$1: %s\n' $1
+case $1 in
+	# catch command if we have one
+	'put' | 'delete' | 'trash' | 'get' | 'undelete' | 'recover' | 'restore' | 'erase' | 'remove' | 'rm' | 'purge' | 'shred' | 'clear' | 'clean' | 'empty' | 'list' | 'help' )
+# 		printf 'using command: %s\n' $1
+		command="$1"
+		shift
+	;;
+	# anything else is treated as a file that is assumed to get trashed id it exists
+	* )
+		if [ -e "$1" ]; then
+# 			printf 'using default command: %s\n' "$default_command"
+			command="$command_default"
+		fi
+	;;
+esac
+
+# we do require at least one valid command
+[[ -n "$command" ]] || error_usage 'unknown command or missing required argument'
+
+# now go for it
+# printf 'using as a command: %s\n' "$command"
+run_command "$command" "$@"
