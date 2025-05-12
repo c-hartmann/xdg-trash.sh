@@ -34,6 +34,10 @@
 #
 #---------------------------------------------
 
+TODO=()
+TODO+=( "handle rooted .Trash-$UID directories" )
+TODO+=( "handle rooted metadata and directory sizes file (see: MyBook)" )
+
 version='0.1.1'
 
 # OTHER (and 'stolen' some ideas from):
